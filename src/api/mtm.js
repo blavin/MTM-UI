@@ -57,7 +57,6 @@ export default class MusicAPI {
       .then(function (response) {
 
         let result = response.data;
-        console.log(response);
 
         let spotifyId = result.song.spotify_id;
 
@@ -67,7 +66,6 @@ export default class MusicAPI {
           .then(function (response2){
 
             let result2 = response2.data;
-            console.log(result2);
             let artists = '';
             result2.artists.forEach((artist) => {
               artists += artist.name + " ";
@@ -124,19 +122,32 @@ export default class MusicAPI {
    * Get related media of a song given an id.
    */
   static getSongMedia = (id) => {
-    let requestUrl = BASE_URL + "/songs/" + id + "/media?n=4";
-
-    return axios.get(requestUrl)
+    //let requestUrl = BASE_URL + "/songs/" + id + "/media?n=4";
+    let billboardURL = "http://localhost:9006/billboard/music/song/" + id;
+    return axios.get(billboardURL)
       .then(function (res) {
 
-        let result = res.data.data;
+        let result = res.data;
+        let songName = result.song.song_name;
+        let artist = result.song.display_artist;
+
+        let imvdbURL = "http://localhost:9008/imvdb/api/v1/search/videos?q=" + songName + " " + artist;
         let media = [];
 
-        result.forEach((mediaObject) => {
-          media.push(new MediaItem(mediaObject.url, mediaObject.caption, mediaObject.thumbnail));
-        });
+        return axios.get(imvdbURL)
+          .then(function (res2){
+            let result2 = res2.data.results;
+            console.log(result2);
+            result2.forEach((mediaObject) => {
+              media.push(new MediaItem(mediaObject.url, mediaObject.song_title, mediaObject.image.l));
+            });
+            return media;
 
-        return media;
+          })
+          .catch(function (error2){
+            MusicAPI.handleError(error2);
+          });
+
       })
       .catch(function (error) {
         MusicAPI.handleError(error);
