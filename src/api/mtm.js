@@ -50,18 +50,46 @@ export default class MusicAPI {
    * Get song information given an id
    */
   static getSongInfo = (id) => {
-    let requestUrl = BASE_URL + "/songs/" + id;
+    //let requestUrl = BASE_URL + "/songs/" + id;
+    let billboardURL = 'http://localhost:9006/billboard/music/song/' + id;
 
-    return axios.get(requestUrl)
+    return axios.get(billboardURL)
       .then(function (response) {
 
-        let result = response.data.data;
+        let result = response.data;
+        console.log(response);
 
-        let song = new Song(id, result.name, result.artist,
-                    result.albumName, result.albumRelease, result.duration,
-                    result.url, result.image);
+        let spotifyId = result.song.spotify_id;
 
-        return song;
+        let spotifyURL = 'http://localhost:9007/spotify/v1/tracks/' + spotifyId;
+
+        return axios.get(spotifyURL)
+          .then(function (response2){
+
+            let result2 = response2.data;
+            console.log(result2);
+            let artists = '';
+            result2.artists.forEach((artist) => {
+              artists += artist.name + " ";
+            });
+            let albumId = result2.album.id;
+
+            return axios.get("http://localhost:9007/spotify/v1/albums/" + albumId)
+              .then(function (response3){
+                let result3 = response3.data;
+                let song = new Song(id, result2.name, artists,
+                  result2.album.name, result3.release_date, result2.duration_ms,
+                  result2.external_urls.spotify, result2.album.images[0].url);
+      
+                  return song;
+              })
+              .catch(function (error3){
+                MusicAPI.handleError(error3);
+              });
+          })
+          .catch(function (error2){
+            MusicAPI.handleError(error2);
+          });
 
       })
       .catch(function (error) {
